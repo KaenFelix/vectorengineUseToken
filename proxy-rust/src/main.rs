@@ -162,11 +162,14 @@ async fn main() {
 
     println!("[proxy] serving EMBEDDED index.html (single-file build)");
     println!("[proxy] VectorEngine proxy listening on http://{}", addr);
-    println!("[proxy] 在浏览器打开上面的地址即可。Ctrl-C 停止。");
 
+    // 先绑定端口(让浏览器不会拿到 connection refused),再启动服务并打开浏览器
     let listener = tokio::net::TcpListener::bind(addr)
         .await
         .expect("bind failed");
+
+    open_browser(&format!("http://{}", addr));
+
     axum::serve(listener, app)
         .with_graceful_shutdown(shutdown_signal())
         .await
@@ -176,4 +179,29 @@ async fn main() {
 async fn shutdown_signal() {
     let _ = tokio::signal::ctrl_c().await;
     println!("\n[proxy] shutting down");
+}
+
+/// 跨平台打开默认浏览器(失败时静默,主流程不受影响)
+fn open_browser(url: &str) {
+    #[cfg(target_os = "macos")]
+    let result = std::process::Command::new("open").arg(url).spawn();
+
+    #[cfg(target_os = "linux")]
+    let result = std::process::Command::new("xdg-open").arg(url).spawn();
+
+    #[cfg(target_os = "windows")]
+    let result = std::process::Command::new("rundll32")
+        .args(["url.dll,FileProtocolHandler", url])
+        .spawn();
+
+    #[cfg(not(any(target_os = "macos", target_os = "linux", target_os = "windows")))]
+    let result: std::io::Result<std::process::Child> = Err(std::io::Error::new(
+        std::io::ErrorKind::Unsupported,
+        "unsupported platform",
+    ));
+
+    match result {
+        Ok(_) => println!("[proxy] opened browser at {}", url),
+        Err(e) => println!("[proxy] (browser auto-open skipped: {})", e),
+    }
 }
