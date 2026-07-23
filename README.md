@@ -39,9 +39,9 @@ cargo run --release
 ```
 useToken/
 ├── index.html              # 前端单文件应用
-├── proxy.py                # Python 版代理(零依赖,备用)
-├── proxy-rust/             # Rust 版代理(推荐)
+├── proxy-rust/             # Rust 版代理(已嵌入 index.html)
 │   ├── Cargo.toml
+│   ├── build.rs
 │   ├── src/main.rs
 │   └── README.md           # Rust 代理详细文档
 └── .github/
@@ -49,16 +49,14 @@ useToken/
         └── build.yml       # 多平台打包 CI
 ```
 
-## 两个代理实现
+## 单文件分发
 
-| | Rust(推荐) | Python(备用) |
-|---|---|---|
-| 运行时依赖 | 无(单一二进制) | Python 3.x |
-| 启动 | `./target/release/vectorengine-proxy` | `python3 proxy.py` |
-| 跨平台分发 | 编译产物直传任意同架构机器 | 需要目标机器装 Python |
-| 性能 | ~0.05ms / 请求 | ~1ms / 请求 |
+整个项目最终产物是**单个可执行文件**(已内嵌 `index.html`),无任何外部依赖:
 
-功能完全等价,Rust 版在生产环境更省心。
+- macOS / Linux: `vectorengine-proxy`
+- Windows: `vectorengine-proxy.exe`
+
+直接双击即可,启动后会自动打开浏览器。
 
 ## 多平台打包
 

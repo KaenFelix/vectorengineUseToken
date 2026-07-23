@@ -1,10 +1,11 @@
 # VectorEngine Token Proxy (Rust)
 
-本地 HTTP 代理,为浏览器前端(<code>../index.html</code>)解决跨域问题。功能与 <code>../proxy.py</code> 等价,优势是:
+本地 HTTP 代理,为浏览器前端(<code>../index.html</code>)解决跨域问题。
 
-- **单一二进制**:无需 Python / Node / 任何运行时
-- **跨平台分发**:拷一个文件到目标机器就能跑
+- **单一二进制**:**已内嵌 `index.html`**,拷一个文件到目标机器就能跑
+- **跨平台分发**:任意同架构机器直接双击
 - **rustls TLS**:不依赖系统 OpenSSL,跨平台稳定
+- **自动开浏览器**:启动后自动调起默认浏览器,无需复制 URL
 
 ## 编译
 
