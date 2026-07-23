@@ -16,3 +16,9 @@ opt-level = 3
 lto = "thin"
 codegen-units = 1
 strip = true
+
+# Windows:静态链接 MSVC CRT,生成独立 .exe,目标机器无需装 VC++ runtime。
+# 默认 Rust 在 Windows 上动态链接 vcruntime140.dll / msvcp140.dll,加了这条后
+# 二进制自带运行时,可以拷到任何 Windows 10/11 直接跑。
+[target.x86_64-pc-windows-msvc]
+rustflags = ["-C", "target-feature=+crt-static"]
