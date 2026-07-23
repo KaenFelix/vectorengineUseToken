@@ -27,7 +27,7 @@ jobs:
             ext: ".exe"
     defaults:
       run:
-        working-directory: proxy-rust
+        shell: bash
     steps:
       - uses: actions/checkout@v4
 
@@ -38,22 +38,29 @@ jobs:
 
       - name: Cache cargo registry & build
         uses: Swatinem/rust-cache@v2
-        with:
-          workspaces: proxy-rust -> target
 
       - name: Build release
+        working-directory: proxy-rust
         run: cargo build --release --target ${{ matrix.target }}
 
-      - name: Collect artifacts (binary + index.html)
-        shell: bash
+      - name: Verify binary exists
+        working-directory: proxy-rust
         run: |
-          mkdir -p dist
-          cp "target/${{ matrix.target }}/release/vectorengine-proxy${{ matrix.ext }}" dist/
-          cp ../index.html dist/
+          set -euo pipefail
+          bin="target/${{ matrix.target }}/release/vectorengine-proxy${{ matrix.ext }}"
+          if [ ! -f "$bin" ]; then
+            echo "::error::Binary not found at $bin"
+            echo "Contents of target/${{ matrix.target }}/release/:"
+            ls -la "target/${{ matrix.target }}/release/" 2>&1 || true
+            exit 1
+          fi
+          echo "OK: $(file "$bin")"
+          echo "Size: $(du -h "$bin" | cut -f1)"
 
-      - name: Upload to GitHub Artifacts
-        uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v4
         with:
           name: vectorengine-proxy-${{ matrix.target }}
-          path: dist/
+          path: |
+            proxy-rust/target/${{ matrix.target }}/release/vectorengine-proxy${{ matrix.ext }}
+            index.html
           if-no-files-found: error
