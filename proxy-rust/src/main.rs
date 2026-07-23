@@ -1,7 +1,7 @@
 //! VectorEngine Token 本地代理 (Rust)
 //!
 //! 等价于 `proxy.py`,为浏览器解决跨域问题。
-//! release 编译产物是单一二进制,无运行时依赖。
+//! release 编译产物是单一二进制,**已内嵌 `index.html`,无需任何外部文件**。
 
 use axum::{
     body::Body,
@@ -13,17 +13,28 @@ use axum::{
 };
 use serde::Deserialize;
 use std::net::SocketAddr;
-use std::path::PathBuf;
-use tower_http::{cors::CorsLayer, services::ServeDir};
+use tower_http::cors::CorsLayer;
 
 const LISTEN_HOST: &str = "127.0.0.1";
 const LISTEN_PORT: u16 = 8765;
 const TARGET: &str = "https://api.vectorengine.ai";
 
+// index.html 在编译时嵌入二进制,运行时无需任何外部文件
+const INDEX_HTML: &[u8] = include_bytes!("../../index.html");
+
 // ---------- Handlers ----------
 
 async fn health() -> impl IntoResponse {
     Json(serde_json::json!({"ok": true, "service": "vectorengine-proxy"}))
+}
+
+async fn index_handler() -> Response<Body> {
+    Response::builder()
+        .status(StatusCode::OK)
+        .header("content-type", "text/html; charset=utf-8")
+        .header("cache-control", "no-store")
+        .body(Body::from(INDEX_HTML))
+        .unwrap()
 }
 
 #[derive(Deserialize)]
@@ -136,26 +147,20 @@ fn urlencode(s: &str) -> String {
 
 #[tokio::main]
 async fn main() {
-    let static_dir = find_static_dir();
-    println!("[proxy] serving static files from: {}", static_dir.display());
-
     let app = Router::new()
         .route("/health", get(health))
+        .route("/", get(index_handler))
+        .route("/index.html", get(index_handler))
         .route("/api/usage", get(api_usage))
         .route("/api/subscription", get(api_subscription))
         .route("/api/log/token", get(api_log))
-        // 任何非 /api/* 请求 → 当作静态文件
-        .fallback_service(
-            ServeDir::new(&static_dir)
-                .append_index_html_on_directories(true)
-                .fallback(ServeDir::new(&static_dir)),
-        )
         .layer(CorsLayer::permissive());
 
     let addr: SocketAddr = format!("{}:{}", LISTEN_HOST, LISTEN_PORT)
         .parse()
         .expect("invalid listen address");
 
+    println!("[proxy] serving EMBEDDED index.html (single-file build)");
     println!("[proxy] VectorEngine proxy listening on http://{}", addr);
     println!("[proxy] 在浏览器打开上面的地址即可。Ctrl-C 停止。");
 
@@ -171,32 +176,4 @@ async fn main() {
 async fn shutdown_signal() {
     let _ = tokio::signal::ctrl_c().await;
     println!("\n[proxy] shutting down");
-}
-
-/// 自动定位包含 index.html 的目录:
-/// 从当前工作目录、可执行文件所在目录分别出发,逐级向上找祖先目录,
-/// 直到找到 index.html 为止。
-fn find_static_dir() -> PathBuf {
-    let mut roots: Vec<PathBuf> = Vec::new();
-    if let Ok(cwd) = std::env::current_dir() {
-        roots.push(cwd);
-    }
-    if let Ok(exe) = std::env::current_exe() {
-        if let Some(parent) = exe.parent() {
-            roots.push(parent.to_path_buf());
-        }
-    }
-
-    for root in roots {
-        let mut current = Some(root);
-        while let Some(c) = current {
-            if c.join("index.html").is_file() {
-                return c;
-            }
-            current = c.parent().map(|p| p.to_path_buf());
-        }
-    }
-
-    // 真找不到:返回 cwd
-    std::env::current_dir().unwrap_or_else(|_| PathBuf::from("."))
 }

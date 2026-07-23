@@ -60,7 +60,5 @@ jobs:
       - uses: actions/upload-artifact@v4
         with:
           name: vectorengine-proxy-${{ matrix.target }}
-          path: |
-            proxy-rust/target/${{ matrix.target }}/release/vectorengine-proxy${{ matrix.ext }}
-            index.html
+          path: proxy-rust/target/${{ matrix.target }}/release/vectorengine-proxy${{ matrix.ext }}
           if-no-files-found: error
