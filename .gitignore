@@ -1,0 +1,39 @@
+# ---------- Rust ----------
+# Build artifacts
+target/
+**/*.rs.bk
+Cargo.lock.bak
+
+# Cargo.lock 保留(此项目是 binary,应锁定依赖版本确保可复现构建)
+
+# ---------- Python (proxy.py 备用) ----------
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+
+# ---------- macOS ----------
+.DS_Store
+.AppleDouble
+.LSOverride
+._*
+.Spotlight-V100
+.Trashes
+
+# ---------- Editors / IDE ----------
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# ---------- Logs / runtime ----------
+*.log
+*.tmp
+.env
+.env.local
+
+# ---------- OS ----------
+Thumbs.db
+desktop.ini

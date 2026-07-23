@@ -1,0 +1,59 @@
+name: build
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:  # 允许在网页上手动触发
+
+jobs:
+  build:
+    name: build (${{ matrix.target }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            target: x86_64-unknown-linux-gnu
+            ext: ""
+          - os: macos-latest
+            target: x86_64-apple-darwin        # macOS Intel
+            ext: ""
+          - os: macos-latest
+            target: aarch64-apple-darwin       # macOS Apple Silicon
+            ext: ""
+          - os: windows-latest
+            target: x86_64-pc-windows-msvc    # Windows
+            ext: ".exe"
+    defaults:
+      run:
+        working-directory: proxy-rust
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rust toolchain + target
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.target }}
+
+      - name: Cache cargo registry & build
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: proxy-rust -> target
+
+      - name: Build release
+        run: cargo build --release --target ${{ matrix.target }}
+
+      - name: Collect artifacts (binary + index.html)
+        shell: bash
+        run: |
+          mkdir -p dist
+          cp "target/${{ matrix.target }}/release/vectorengine-proxy${{ matrix.ext }}" dist/
+          cp ../index.html dist/
+
+      - name: Upload to GitHub Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: vectorengine-proxy-${{ matrix.target }}
+          path: dist/
+          if-no-files-found: error
