@@ -1,0 +1,23 @@
+{
+  "name": "VectorEngine TokenUse",
+  "image": "mcr.microsoft.com/devcontainers/rust:1-bookworm",
+  "features": {},
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "rust-lang.rust-analyzer"
+      ]
+    }
+  },
+  "forwardPorts": [8765],
+  "portsAttributes": {
+    "8765": {
+      "label": "VectorEngine Proxy",
+      "onAutoForward": "openBrowser",
+      "protocol": "http"
+    }
+  },
+  "postCreateCommand": "cd proxy-rust && cargo build --release",
+  "postStartCommand": "cd proxy-rust && ./target/release/vectorengine-proxy",
+  "remoteUser": "vscode"
+}

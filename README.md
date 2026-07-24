@@ -88,3 +88,31 @@ useToken/
 - `total_usage` 接口返回的是「美分」单位,前端已统一除以 100 换算成美元显示(常量 `USAGE_DIVISOR = 100` 在 `index.html` 中,如需调整改这一行)。
 - `access_until == 0` 表示「永不过期」。
 - 所有 token 全部保存在浏览器 localStorage,不上传任何服务器。
+
+## ☁️ 在 GitHub Codespace 上跑(零本地环境)
+
+仓库带 `.devcontainer/devcontainer.json`,可以一键在云端跑起来。**注意:这种模式下 token 会经过 GitHub 的服务器,适合临时演示/分享,不适合生产环境长期使用**。
+
+启动步骤:
+
+1. 打开 <https://github.com/KaenFelix/vectorengineUseToken>
+2. 点 **Code** → **Codespaces** → **Create codespace on main**
+3. 等 2-3 分钟(首次冷启动 + cargo build)
+4. Codespace 自动启动代理,8765 端口自动转发,浏览器自动打开 <https://xxx-8765.app.github.dev/>
+
+也可以手动启动:
+
+```bash
+cd proxy-rust
+./target/release/vectorengine-proxy
+```
+
+免费额度:每月 120 core-hour,2 核 instance 约 60 小时,够个人临时使用。
+
+## 三种使用方式对比
+
+| 方式 | 适合场景 | token 安全性 |
+|---|---|---|
+| 下载 binary 双击(默认) | 自用、长期 | ⭐⭐⭐ token 不出本机 |
+| GitHub Codespace | 给朋友演示、临时分享 | ⭐ token 经 GitHub 服务器 |
+| 下载 Release 附件 | 装到别人机器上 | ⭐⭐⭐ 跟本地一样 |
