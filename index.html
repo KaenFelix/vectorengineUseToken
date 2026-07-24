@@ -509,10 +509,6 @@
   <header>
   <div class="header-bar">
     <h1>VectorEngine TokenUse</h1>
-    <button class="btn" id="openProxyBtn" title="配置代理地址">
-      <span>代理</span>
-      <span class="count-badge zero" id="proxyBadge">?</span>
-    </button>
     <button class="btn" id="openTokensBtn">
       <span>Token 列表</span>
       <span class="count-badge zero" id="tokenCount">0</span>
@@ -596,6 +592,8 @@
       <textarea id="tokenInput" placeholder="sk-xxx...&#10;sk-yyy...&#10;sk-zzz..." spellcheck="false"></textarea>
     </div>
     <div class="modal-footer">
+      <button class="btn btn-ghost" id="openProxyBtn" title="配置代理地址">⚙ 代理设置</button>
+      <div style="flex:1"></div>
       <button class="btn" id="modalCancelBtn">取消</button>
       <button class="btn btn-primary" id="saveBtn">保存</button>
     </div>
@@ -637,8 +635,8 @@
 // ---------- Constants ----------
 const STORAGE_KEY = 'vectorengine_tokens';
 const PROXY_BASE_KEY = 'vectorengine_proxy_base';
-// 用户配置的代理地址前缀;空 = 同源模式(下载 binary 双击运行)
-let proxyBase = '';
+// 用户配置的代理地址前缀;默认连本机代理(两种用法都友好)
+let proxyBase = 'http://localhost:8765';
 const USAGE_URL = (start, end) =>
   `${proxyBase}/api/usage?start_date=${start}&end_date=${end}`;
 const SUB_URL = () => `${proxyBase}/api/subscription`;
@@ -664,7 +662,6 @@ const modalCount    = $('modalCount');
 const modalCloseBtn = $('modalCloseBtn');
 const modalCancelBtn= $('modalCancelBtn');
 const openProxyBtn  = $('openProxyBtn');
-const proxyBadge    = $('proxyBadge');
 const proxyModal    = $('proxyModal');
 const proxyBaseInput = $('proxyBaseInput');
 const proxyCloseBtn = $('proxyCloseBtn');
@@ -719,8 +716,9 @@ function saveProxyBase(url) {
 function loadProxyBase() {
   try {
     const v = localStorage.getItem(PROXY_BASE_KEY);
-    return typeof v === 'string' ? v : '';
-  } catch { return ''; }
+    if (typeof v === 'string' && v.length > 0) return v;
+  } catch {}
+  return proxyBase; // fallback to default
 }
 function saveDateRange(start, end) {
   try { localStorage.setItem(DATE_KEY, JSON.stringify({ start, end })); } catch {}
@@ -1126,18 +1124,6 @@ function closeTokenModal() {
 }
 
 // ---------- Proxy settings ----------
-function updateProxyBadge() {
-  if (proxyBase) {
-    proxyBadge.textContent = '●';
-    proxyBadge.classList.remove('zero');
-    proxyBadge.title = `已配置: ${proxyBase}`;
-  } else {
-    proxyBadge.textContent = '?';
-    proxyBadge.classList.add('zero');
-    proxyBadge.title = '未配置 — 同源模式(需本地 binary)';
-  }
-}
-
 function openProxyModal() {
   proxyBaseInput.value = proxyBase;
   proxyTestResult.textContent = '';
@@ -1152,7 +1138,6 @@ function saveProxyBaseAction() {
   const v = proxyBaseInput.value.trim().replace(/\/+$/, '');
   proxyBase = v;
   saveProxyBase(v);
-  updateProxyBadge();
   closeProxyModal();
   toast(v ? `代理已设为 ${v}` : '已切换回同源模式');
 }
@@ -1305,7 +1290,6 @@ document.addEventListener('keydown', (e) => {
 
 // 启动时从 localStorage 恢复
 proxyBase = loadProxyBase();
-updateProxyBadge();
 const saved = loadTokens();
 if (saved.length) tokenInput.value = saved.join('\n');
 
