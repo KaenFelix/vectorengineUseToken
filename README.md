@@ -17,28 +17,51 @@
 
 ## 快速开始
 
-### 1. 启动代理(选 Rust 版,推荐)
+### 方式 A:用 GitHub Pages 公开版(零下载)
+
+直接在浏览器打开:
+
+🌐 **<https://KaenFelix.github.io/vectorengineUseToken/>**
+
+首次打开会提示你填代理地址 — 你需要先在自己电脑上跑代理(见下方「启动代理」),然后在页面右上「代理」按钮里填 `http://localhost:8765`。
+
+> ⚠️ token 会经过你自己的代理,然后发到 VectorEngine API。GitHub Pages 只托管静态前端,**拿不到你的 token**。
+
+### 方式 B:下载 binary(单文件,token 不出本机)
+
+去 [Releases](https://github.com/KaenFelix/vectorengineUseToken/releases) 下载对应平台的 binary:
+
+- macOS / Linux: `vectorengine-proxy`
+- Windows: `vectorengine-proxy.exe`
+
+双击运行,自动打开浏览器到 `http://localhost:8765/`,无需任何配置。
+
+## 启动代理(Rust 版)
+
+任选一种方式启动代理:
 
 ```bash
-cd proxy-rust
-cargo run --release
+# 从源码
+cd proxy-rust && cargo run --release
+
+# 用下载的 binary
+./vectorengine-proxy
 ```
 
-看到 `[proxy] VectorEngine proxy listening on http://127.0.0.1:8765` 即就绪。
+看到 `[proxy] VectorEngine proxy listening on http://127.0.0.1:8765` 即就绪。页面会自动打开。
 
-### 2. 打开页面
+## 使用流程
 
-浏览器访问 <http://localhost:8765/>
-
-### 3. 粘贴 token,点「查询全部」
-
-在弹出的「Token 列表」弹框里每行粘贴一个 token,点保存 → 主表格立即出现所有 token 行(状态"未查询")→ 点「查询全部」批量拉数据。
+1. 打开页面(方式 A 或 B)
+2. 点「Token 列表」粘贴你的 token(每行一个)
+3. 点「查询全部」
+4. 表格显示每个 token 的余额/用量,点击展开日志行看最近请求
 
 ## 目录结构
 
 ```
 useToken/
-├── index.html              # 前端单文件应用
+├── index.html              # 前端单文件应用(可单独部署到 GitHub Pages)
 ├── proxy-rust/             # Rust 版代理(已嵌入 index.html)
 │   ├── Cargo.toml
 │   ├── build.rs
@@ -46,7 +69,8 @@ useToken/
 │   └── README.md           # Rust 代理详细文档
 └── .github/
     └── workflows/
-        └── build.yml       # 多平台打包 CI
+        ├── build.yml       # 多平台打包 + Release
+        └── pages.yml       # 部署 index.html 到 GitHub Pages
 ```
 
 ## 单文件分发
@@ -67,7 +91,7 @@ useToken/
 - macOS Apple Silicon
 - Windows x86_64
 
-在 GitHub repo 的 **Actions** 页可以下载所有产物。
+push tag(如 `v1.0.0`)会自动发布到 [Releases](https://github.com/KaenFelix/vectorengineUseToken/releases) 页面。
 
 ### 本地交叉编译 Windows 包
 

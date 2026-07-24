@@ -509,6 +509,10 @@
   <header>
   <div class="header-bar">
     <h1>VectorEngine TokenUse</h1>
+    <button class="btn" id="openProxyBtn" title="配置代理地址">
+      <span>代理</span>
+      <span class="count-badge zero" id="proxyBadge">?</span>
+    </button>
     <button class="btn" id="openTokensBtn">
       <span>Token 列表</span>
       <span class="count-badge zero" id="tokenCount">0</span>
@@ -598,16 +602,48 @@
   </div>
 </div>
 
+<div class="modal-mask" id="proxyModal" role="dialog" aria-modal="true">
+  <div class="modal" style="max-width:520px">
+    <div class="modal-header">
+      <div class="modal-title">代理设置</div>
+      <button class="modal-close" id="proxyCloseBtn" aria-label="关闭">×</button>
+    </div>
+    <div class="modal-body">
+      <p class="panel-hint" style="margin:0 0 8px;line-height:1.5">
+        如果从 GitHub Pages 打开本页(URL 是 <code>*.github.io</code>),需要填你自己的代理地址,
+        因为 GitHub Pages 没有后端。下载 binary 双击运行时此项留空(同源模式)。
+      </p>
+      <label class="control" style="display:flex;flex-direction:column;align-items:stretch;gap:6px">
+        代理地址(末尾不带 /)
+        <input type="text" id="proxyBaseInput" placeholder="http://localhost:8765" style="height:34px;padding:0 10px;border:1px solid var(--border);border-radius:8px;background:var(--bg-input);color:var(--text);font-size:13px;line-height:1;outline:none">
+      </label>
+      <div style="margin-top:10px;display:flex;align-items:center;gap:8px">
+        <button class="btn" id="testProxyBtn">测试连接</button>
+        <span id="proxyTestResult" class="panel-hint"></span>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn" id="proxyClearBtn">清空(同源)</button>
+      <div style="flex:1"></div>
+      <button class="btn" id="proxyCancelBtn">取消</button>
+      <button class="btn btn-primary" id="proxySaveBtn">保存</button>
+    </div>
+  </div>
+</div>
+
 <script>
 'use strict';
 
 // ---------- Constants ----------
 const STORAGE_KEY = 'vectorengine_tokens';
+const PROXY_BASE_KEY = 'vectorengine_proxy_base';
+// 用户配置的代理地址前缀;空 = 同源模式(下载 binary 双击运行)
+let proxyBase = '';
 const USAGE_URL = (start, end) =>
-  `/api/usage?start_date=${start}&end_date=${end}`;
-const SUB_URL = '/api/subscription';
+  `${proxyBase}/api/usage?start_date=${start}&end_date=${end}`;
+const SUB_URL = () => `${proxyBase}/api/subscription`;
 const LOG_URL = (key, page, pageSize, startTs, endTs) =>
-  `/api/log/token?key=${encodeURIComponent(key)}&page=${page}&page_size=${pageSize}&start_timestamp=${startTs}&end_timestamp=${endTs}`;
+  `${proxyBase}/api/log/token?key=${encodeURIComponent(key)}&page=${page}&page_size=${pageSize}&start_timestamp=${startTs}&end_timestamp=${endTs}`;
 // total_usage 的单位是美分,需除以 100 得到美元
 const USAGE_DIVISOR = 100;
 
@@ -627,6 +663,16 @@ const tokenModal    = $('tokenModal');
 const modalCount    = $('modalCount');
 const modalCloseBtn = $('modalCloseBtn');
 const modalCancelBtn= $('modalCancelBtn');
+const openProxyBtn  = $('openProxyBtn');
+const proxyBadge    = $('proxyBadge');
+const proxyModal    = $('proxyModal');
+const proxyBaseInput = $('proxyBaseInput');
+const proxyCloseBtn = $('proxyCloseBtn');
+const proxyCancelBtn= $('proxyCancelBtn');
+const proxySaveBtn  = $('proxySaveBtn');
+const proxyClearBtn = $('proxyClearBtn');
+const testProxyBtn  = $('testProxyBtn');
+const proxyTestResult = $('proxyTestResult');
 const concurrencyInput = $('concurrency');
 const startDateInput   = $('startDate');
 const endDateInput     = $('endDate');
@@ -666,6 +712,15 @@ function loadTokens() {
     const arr = JSON.parse(raw);
     return Array.isArray(arr) ? arr.filter(t => typeof t === 'string') : [];
   } catch { return []; }
+}
+function saveProxyBase(url) {
+  try { localStorage.setItem(PROXY_BASE_KEY, url); } catch {}
+}
+function loadProxyBase() {
+  try {
+    const v = localStorage.getItem(PROXY_BASE_KEY);
+    return typeof v === 'string' ? v : '';
+  } catch { return ''; }
 }
 function saveDateRange(start, end) {
   try { localStorage.setItem(DATE_KEY, JSON.stringify({ start, end })); } catch {}
@@ -747,7 +802,7 @@ async function queryOne(token, startDate, endDate, signal, divisor, pageSize) {
     .catch(err => { if (err.name === 'AbortError') throw err; return null; });
   const [usage, sub, log] = await Promise.all([
     fetchJSON(USAGE_URL(startDate, endDate), token, signal),
-    fetchJSON(SUB_URL, token, signal),
+    fetchJSON(SUB_URL(), token, signal),
     logTask,
   ]);
   const total = Number(sub.soft_limit_usd);
@@ -1070,6 +1125,62 @@ function closeTokenModal() {
   tokenModal.classList.remove('show');
 }
 
+// ---------- Proxy settings ----------
+function updateProxyBadge() {
+  if (proxyBase) {
+    proxyBadge.textContent = '●';
+    proxyBadge.classList.remove('zero');
+    proxyBadge.title = `已配置: ${proxyBase}`;
+  } else {
+    proxyBadge.textContent = '?';
+    proxyBadge.classList.add('zero');
+    proxyBadge.title = '未配置 — 同源模式(需本地 binary)';
+  }
+}
+
+function openProxyModal() {
+  proxyBaseInput.value = proxyBase;
+  proxyTestResult.textContent = '';
+  proxyTestResult.style.color = '';
+  proxyModal.classList.add('show');
+  setTimeout(() => proxyBaseInput.focus(), 0);
+}
+function closeProxyModal() {
+  proxyModal.classList.remove('show');
+}
+function saveProxyBaseAction() {
+  const v = proxyBaseInput.value.trim().replace(/\/+$/, '');
+  proxyBase = v;
+  saveProxyBase(v);
+  updateProxyBadge();
+  closeProxyModal();
+  toast(v ? `代理已设为 ${v}` : '已切换回同源模式');
+}
+async function testProxyConnection() {
+  const url = proxyBaseInput.value.trim().replace(/\/+$/, '');
+  if (!url) {
+    proxyTestResult.textContent = '请先填代理地址';
+    proxyTestResult.style.color = 'var(--danger)';
+    return;
+  }
+  proxyTestResult.textContent = '测试中…';
+  proxyTestResult.style.color = 'var(--text-muted)';
+  try {
+    const res = await fetch(url + '/health');
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const data = await res.json();
+    if (data && data.ok) {
+      proxyTestResult.textContent = '✓ 连接成功';
+      proxyTestResult.style.color = 'var(--success)';
+    } else {
+      throw new Error('响应不是预期格式');
+    }
+  } catch (e) {
+    proxyTestResult.textContent = '✗ ' + e.message;
+    proxyTestResult.style.color = 'var(--danger)';
+  }
+}
+
 function refreshOne(idx) {
   const row = rows[idx];
   if (!row) return;
@@ -1174,11 +1285,27 @@ saveBtn.addEventListener('click', saveTokensAction);
 tokenModal.addEventListener('click', (e) => {
   if (e.target === tokenModal) closeTokenModal();
 });
+openProxyBtn.addEventListener('click', openProxyModal);
+proxyCloseBtn.addEventListener('click', closeProxyModal);
+proxyCancelBtn.addEventListener('click', closeProxyModal);
+proxySaveBtn.addEventListener('click', saveProxyBaseAction);
+proxyClearBtn.addEventListener('click', () => { proxyBaseInput.value = ''; saveProxyBaseAction(); });
+testProxyBtn.addEventListener('click', testProxyConnection);
+proxyBaseInput.addEventListener('keydown', (e) => {
+  if (e.key === 'Enter') saveProxyBaseAction();
+});
+proxyModal.addEventListener('click', (e) => {
+  if (e.target === proxyModal) closeProxyModal();
+});
 document.addEventListener('keydown', (e) => {
-  if (e.key === 'Escape' && tokenModal.classList.contains('show')) closeTokenModal();
+  if (e.key !== 'Escape') return;
+  if (tokenModal.classList.contains('show')) closeTokenModal();
+  else if (proxyModal.classList.contains('show')) closeProxyModal();
 });
 
 // 启动时从 localStorage 恢复
+proxyBase = loadProxyBase();
+updateProxyBadge();
 const saved = loadTokens();
 if (saved.length) tokenInput.value = saved.join('\n');
 
