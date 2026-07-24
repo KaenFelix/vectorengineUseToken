@@ -145,4 +145,3 @@ push tag(如 `v1.0.0`)→ 自动发布到 [Releases](https://github.com/KaenFeli
 - `total_usage` 接口返回的是「美分」单位,前端已统一除以 100 换算成美元显示(常量 `USAGE_DIVISOR = 100` 在 `index.html` 中,如需调整改这一行)。
 - `access_until == 0` 表示「永不过期」。
 - 所有 token 全部保存在浏览器 localStorage,不上传任何服务器。
-- proxy.py 已废弃,统一用 Rust 实现。
